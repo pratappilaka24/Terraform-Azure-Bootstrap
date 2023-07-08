@@ -3,13 +3,14 @@
 #--------------
 # Configuration
 # -------------
+export SUBSCRIPTIONID="*put your subscription id here*"
+export APPNAME="tfazbootstrap" #avoid CAPS
 
-export RG_NAME="rg_tfazbootstrap"
-export STORAGEACCT_NAME="sgtfazbootstrap"  # must be globally unique
+export RG_NAME="rg_$APPNAME"
+export STORAGEACCT_NAME="sg$APPNAME"  # must be globally unique, also no CAPS
 export LOCATION="australiaeast"
 export APPNAME="tfazbootstrap"
 export KEYVAULTNAME="kv-$APPNAME"
-export SUBSCRIPTIONID="*put your subscription id here*"
 
 # Resource Group
 # --------------
