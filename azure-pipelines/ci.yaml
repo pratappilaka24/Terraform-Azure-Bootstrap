@@ -1,0 +1,16 @@
+name: $(BuildID)
+
+trigger: 
+  branches:
+    include:
+    - master
+    - main
+    - feat/*
+    - fix/*
+
+pool: 
+  vmImage: 'ubuntu-latest'
+
+stages:
+- template: ./stages/ci.yaml
+

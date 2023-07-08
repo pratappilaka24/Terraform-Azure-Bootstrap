@@ -1,0 +1,9 @@
+steps:
+- bash: |
+    terraform -version
+    terraform init -reconfigure \
+      -backend-config="storage_account_name=$(kv-storageaccount-name)" \
+      -backend-config="sas_token=$(kv-storage-sas-token)" \
+      -backend-config="container_name=$(kv-sgcontainer-name)" \
+      -backend-config="key=$(kv-statefile-name)"
+  displayName: Terraform Init

@@ -1,0 +1,41 @@
+name: $(BuildID)
+
+trigger: none
+
+pool: 
+  vmImage: 'ubuntu-latest'
+
+stages:
+- template: ./stages/ci.yaml
+
+- stage: devStage
+  displayName: Deploy - Dev
+  condition: and(succeeded('CI'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  variables:
+  - group: kv_variable_group
+  jobs:
+  - job: devJob
+    displayName: Terraform - Plan and Apply
+    variables:      
+      terraformVarFile: environments/dev.tfvars
+      terraformPlanFile: tfplan.out   
+    steps:
+    - template: ./steps/terraform-init.yaml
+    - template: ./steps/terraform-plan.yaml
+    - template: ./steps/terraform-apply.yaml
+
+- stage: prodStage
+  displayName: Deploy - Prod
+  condition: and(succeeded('CI'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  variables:
+  - group: kv_variable_group
+  jobs:
+  - job: devJob
+    displayName: Terraform - Plan and Apply
+    variables:      
+      terraformVarFile: environments/prod.tfvars
+      terraformPlanFile: tfplan.out   
+    steps:
+    - template: ./steps/terraform-init.yaml
+    - template: ./steps/terraform-plan.yaml
+    - template: ./steps/terraform-apply.yaml

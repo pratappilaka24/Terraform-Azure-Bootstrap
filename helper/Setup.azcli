@@ -1,0 +1,126 @@
+# If you rework on this file in VS Code, 
+# its recommended to install Azure CLI tools extension
+#--------------
+# Configuration
+# -------------
+
+export RG_NAME="rg_tfazbootstrap"
+export STORAGEACCT_NAME="sgtfazbootstrap"  # must be globally unique
+export LOCATION="australiaeast"
+export APPNAME="tfazbootstrap"
+export KEYVAULTNAME="kv-$APPNAME"
+export SUBSCRIPTIONID="*put your subscription id here*"
+
+# Resource Group
+# --------------
+# Create a dedicated resource group
+# Configurable: name, location
+az account set --name $SUBSCRIPTIONID
+
+az group create \
+	--name $RG_NAME \
+	--location $LOCATION 
+    
+    
+
+
+# Storage Account
+# ---------------
+# This holds your actual Terraform state file
+# Note: we explicitly disable public access.
+
+az storage account create \
+	--name $STORAGEACCT_NAME \
+	--resource-group $RG_NAME \
+	--kind StorageV2 \
+	--sku Standard_LRS \
+	--https-only true \
+	--allow-blob-public-access false \
+	--tags "application=tfazbootstrap"
+
+# Blobs always need a parent container, so we'll create one
+az storage container create \
+	--name terraform \
+	--account-name $STORAGEACCT_NAME \
+	--public-acces off \
+	--auth-mode login
+
+# Shared Access Signature
+# Instead of using the access key, we will create a SAS token that expires in 7 days
+token=$(az storage account generate-sas \
+  --permissions cdlruwap \
+  --account-name $STORAGEACCT_NAME \
+  --services b \
+  --resource-types sco  \
+  --expiry $(date -d "+7 days" '+%Y-%m-%dT%H:%MZ') \
+  -o tsv)
+
+#Creating Service principal
+let "randomIdentifier=$RANDOM*$RANDOM"  
+servicePrincipalName=$APPNAME"-sp-$randomIdentifier"
+roleName="Contributor"
+subscriptionID=$(az account show --query id -o tsv)
+# Verify the ID of the active subscription
+echo "Service principalname : $servicePrincipalName"
+echo "Using subscription ID : $subscriptionID"
+echo "Creating SP for RBAC with name $servicePrincipalName, with role $roleName and in scopes /subscriptions/$subscriptionID/resourceGroups/$resourceGroup"
+sp=$(az ad sp create-for-rbac --name $servicePrincipalName \
+	--role $roleName\
+	--scopes /subscriptions/$subscriptionID/resourceGroups/$RG_NAME)
+echo "Service Principal : $sp" 
+
+
+# Creating a keyvalut to save all the above details
+# The same keyvault will be used for suplying pipeline variables
+kv=$(az keyvault create --name $KEYVAULTNAME\
+	--resource-group $RG_NAME\
+	--location $LOCATION)
+
+# Setting SPN RBAC permisions on Keyvault
+az keyvault set-policy --name $KEYVAULTNAME\
+	--spn $(echo "$sp" | jq -r '.appId') \
+	--secret-permissions get 
+
+# Subscription ID
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-subscription-id" --value $subscriptionID
+
+# Storage Account Name 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-storageaccount-name" --value $STORAGEACCT_NAME
+
+# Resource group name 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-resourcegroup-name" --value $RG_NAME
+
+# Container name 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-sgcontainer-name" --value "terraform"
+
+# Container name 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-statefile-name" --value "$APPNAME.tfstate"
+
+# SAS Token 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-storage-sas-token" --value $token
+
+# Location 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-location" --value $LOCATION
+
+# Service Principal ID 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-spn-id" --value $(echo "$sp" | jq -r '.appId')
+
+# Service Principal Name 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-spn-name" --value $servicePrincipalName
+
+# Service Principal ID 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-spn-psw" --value $(echo "$sp" | jq -r '.password')
+
+# Tenant Id 
+az keyvault secret set --vault-name $KEYVAULTNAME\
+	--name "kv-tenant-id" --value $(echo "$sp" | jq -r '.tenant')
