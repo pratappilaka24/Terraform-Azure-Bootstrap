@@ -1,4 +1,5 @@
 This git resource can be used as a Seed Repo for any application landing zone. All the instructions to use this repo is on my article https://pratapreddypilaka.blogspot.com/2023/07/terraform-azure-application-landing.html
+
 This will create baseline components in azure for your application and working CI/CD Yaml pipelines to run right from the beginning. 
 
 Components:
