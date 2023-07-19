@@ -9,7 +9,7 @@ export APPNAME="tfazbootstrap" #avoid CAPS
 export RG_NAME="rg_$APPNAME"
 export STORAGEACCT_NAME="sg$APPNAME$RANDOM"  # must be globally unique, also no CAPS
 export LOCATION="australiaeast"
-export KEYVAULTNAME="kv-$APPNAME"
+export KEYVAULTNAME="kv-$APPNAME$RANDOM"
 
 # Resource Group
 # --------------
